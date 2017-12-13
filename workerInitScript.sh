@@ -1,7 +1,6 @@
 #!/bin/bash
 
 echo "$1 the url" 
-echo "$2 the commit sha" 
 
 cd C:\Users\Varnit Goel\Documents\Python Scripts
 
