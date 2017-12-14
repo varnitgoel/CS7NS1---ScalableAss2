@@ -46,9 +46,22 @@ class controller(): ##Server Class
                     print("Commit Sha: {}".format(x['sha']))
                 page_no = page_no + 1
         self.T_no_of_commits = len(self.commitlist)  #total no. of commits in repos.
-        self.listOfCCs = []
+        self.listcyclC = []
         print("Total Commits: {}".format(self.T_no_of_commits))
         
+#*************************************************************************************
+    
+#  Obtaining commits and posting cyclomatic results
+class CCrepo(Resource):
+    def __init__(self):  # Upon initialisation of the class
+        global admin
+        self.server = admin #when worker wants access
+        super(repo, self).__init__()  #to init. resources
+        self.reqparser = reqparse.RequestParser()
+        #argument for incoming values in JSON
+        self.reqparser.add_argument('pullStatus', type = int, location = 'json')
+        self.reqparser.add_argument('complexity', type = float, location = 'json')     
+    
 #*************************************************************************************
     
     def get(self):
@@ -65,23 +78,41 @@ class controller(): ##Server Class
             print("Worker No.: {}".format(self.server.cur_workers))
 
 api.add_resource(getRepository, "/repo", endpoint="repo")
-
-#*************************************************************************************
-
-#  Obtaining commits and posting cyclomatic results
-class CCrepo(Resource):
-    def __init__(self):  # Upon initialisation of the class
-        global admin
-        self.server = admin #when worker wants access
-        super(repo, self).__init__()  #to init. resources
-        self.reqparser = reqparse.RequestParser()
-        #argument for incoming values in JSON
-        self.reqparser.add_argument('pullStatus', type = int, location = 'json')
-        self.reqparser.add_argument('complexity', type = float, location = 'json') 
      
 #*************************************************************************************    
         
+    def get(self):
+        if self.server.cur_workers < self.server.no_of_workers:
+            time.sleep(0.2)
+            return {'sha': -2}
+        if len(self.server.commitList) == 0:
+            return {'sha': -1}
+        commit_val = self.server.commitList[0]  #next commit in the list
+         #Del. the items
+        del self.server.commitList[0] 
+        print("Sent: {}".format(commit_val))
+        return {'sha':commit_val}
 
+
+    def post(self):
+        args = self.reqparser.parse_args()
+        self.server.listcyclC.append({'sha':args['commitSha'], 'complexity':args['complexity']})
+        print(self.server.listcyclC)
+        print(self.server.commitList)
+        if len(self.server.listcyclC) == self.server.T_no_of_commits:
+            endTime = time.time() - self.server.startTime
+            print(len(self.server.listcyclC))
+            t_avgCC = 0
+            for x in self.server.listcyclC:
+                if x['complexity'] > 0:
+                    t_avgCC = t_avgCC + x['complexity']
+                else:
+                    print("Commit {} has no computable files".format(x['sha']))
+            t_avgCC = t_avgCC / len(self.server.listcyclC)
+        return {'success':True}
+
+#  Created a route at /cyclomatic with an endpoint called cyclomatic
+api.add_resource(cyclomaticApi, "/cyclomatic", endpoint="cyclomatic")
 
 #*************************************************************************************
         
